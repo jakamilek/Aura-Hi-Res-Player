@@ -6,13 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Privacy-fork compatibility client.
- *
- * The original WebSocket implementation is intentionally removed. This class keeps
- * the public API used by the existing UI compiling while every operation fails closed
- * and performs no network, persistence, notification or telemetry I/O.
- */
+/** Privacy-fork compatibility client. The original networking implementation is removed. */
 class ListenTogetherClient(@Suppress("UNUSED_PARAMETER") context: Context) {
     companion object {
         const val ACTION_APPROVE_JOIN = "iad1tya.echo.music.LISTEN_TOGETHER_APPROVE_JOIN"
@@ -26,9 +20,7 @@ class ListenTogetherClient(@Suppress("UNUSED_PARAMETER") context: Context) {
         fun getInstance(): ListenTogetherClient? = instance
         fun setInstance(client: ListenTogetherClient) { instance = client }
     }
-
     init { setInstance(this) }
-
     val connectionState: StateFlow<ConnectionState> = MutableStateFlow(ConnectionState.DISCONNECTED)
     val roomState: StateFlow<RoomState?> = MutableStateFlow(null)
     val role: StateFlow<RoomRole> = MutableStateFlow(RoomRole.NONE)
@@ -37,13 +29,11 @@ class ListenTogetherClient(@Suppress("UNUSED_PARAMETER") context: Context) {
     val bufferingUsers: StateFlow<List<String>> = MutableStateFlow(emptyList())
     val logs: StateFlow<List<LogEntry>> = MutableStateFlow(emptyList())
     val events: SharedFlow<ListenTogetherEvent> = MutableSharedFlow()
-    val blockedUsernames: StateFlow<Set<String>> = MutableStateFlow(emptySet())
+    val blockedUsernames: StateFlow<List<String>> = MutableStateFlow(emptyList())
     val pendingSuggestions: StateFlow<List<SuggestionReceivedPayload>> = MutableStateFlow(emptyList())
-
     val isInRoom: Boolean get() = false
     val isHost: Boolean get() = false
     val hasPersistedSession: Boolean get() = false
-
     fun initialize(vararg args: Any?) = Unit
     fun connect(vararg args: Any?) = Unit
     fun disconnect(vararg args: Any?) = Unit
@@ -65,5 +55,5 @@ class ListenTogetherClient(@Suppress("UNUSED_PARAMETER") context: Context) {
     fun sendChatMessage(vararg args: Any?) = Unit
     fun setPlayerConnection(@Suppress("UNUSED_PARAMETER") connection: Any?) = Unit
     fun getPersistedRoomCode(): String? = null
-    fun getSessionAge(): Long? = null
+    fun getSessionAge(): Long = 0L
 }
