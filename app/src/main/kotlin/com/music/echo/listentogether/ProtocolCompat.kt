@@ -23,7 +23,6 @@ data class UserDisconnectedPayload(val userId: String, val username: String)
 data class SuggestionApprovedPayload(val suggestionId: String, val trackInfo: TrackInfo)
 data class SuggestionRejectedPayload(val suggestionId: String, val reason: String? = null)
 data class JoinRejectedPayload(val reason: String)
-
 data class JoinRequestCompat(val userId: String, val username: String)
 
 sealed class ListenTogetherEvent {
@@ -55,5 +54,7 @@ data class ListenTogetherServer(val name: String, val url: String, val location:
 object ListenTogetherServers {
     val defaultServerUrl: String = ""
     val defaultServers: List<ListenTogetherServer> = emptyList()
+    val serversFlow = kotlinx.coroutines.flow.MutableStateFlow(emptyList<ListenTogetherServer>())
     fun allServers(): List<ListenTogetherServer> = emptyList()
+    fun findByUrl(@Suppress("UNUSED_PARAMETER") url: String): ListenTogetherServer? = null
 }
