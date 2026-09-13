@@ -1,8 +1,5 @@
 package iad1tya.echo.music.utils.qobuz
 
-import iad1tya.echo.music.qobuz.QobuzSearchData
-import iad1tya.echo.music.qobuz.QobuzTrack
-
 /**
  * Compatibility layer for legacy call sites that used the removed third-party Qobuz proxy.
  *
@@ -21,4 +18,5 @@ class QobuzApiClient {
 
 data class LegacyFileUrl(val url: String?)
 
-typealias LegacyQobuzTrack = QobuzTrack
+typealias QobuzSearchData = iad1tya.echo.music.qobuz.QobuzSearchData
+typealias QobuzTrack = iad1tya.echo.music.qobuz.QobuzTrack
