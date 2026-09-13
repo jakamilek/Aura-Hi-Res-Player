@@ -3,12 +3,7 @@ package iad1tya.echo.music.listentogether
 import android.content.Context
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Privacy-fork compatibility manager.
- *
- * Listen Together has no active implementation in this fork. All operations are
- * no-ops and no sockets, servers, persistence or telemetry are touched.
- */
+/** Disabled Listen Together compatibility manager. No network, persistence or telemetry. */
 class ListenTogetherManager(
     private val client: ListenTogetherClient,
     @Suppress("UNUSED_PARAMETER") private val context: Context,
@@ -21,13 +16,11 @@ class ListenTogetherManager(
     val bufferingUsers: StateFlow<List<String>> get() = client.bufferingUsers
     val logs: StateFlow<List<LogEntry>> get() = client.logs
     val events get() = client.events
-    val blockedUsernames: StateFlow<Set<String>> get() = client.blockedUsernames
+    val blockedUsernames: StateFlow<List<String>> get() = client.blockedUsernames
     val pendingSuggestions: StateFlow<List<SuggestionReceivedPayload>> get() = client.pendingSuggestions
-
     val isInRoom: Boolean get() = false
     val isHost: Boolean get() = false
     val hasPersistedSession: Boolean get() = false
-
     fun initialize(vararg args: Any?) = client.initialize(*args)
     fun connect(vararg args: Any?) = client.connect(*args)
     fun disconnect(vararg args: Any?) = client.disconnect(*args)
@@ -49,5 +42,5 @@ class ListenTogetherManager(
     fun sendChatMessage(vararg args: Any?) = client.sendChatMessage(*args)
     fun setPlayerConnection(connection: Any?) = client.setPlayerConnection(connection)
     fun getPersistedRoomCode(): String? = null
-    fun getSessionAge(): Long? = null
+    fun getSessionAge(): Long = 0L
 }
