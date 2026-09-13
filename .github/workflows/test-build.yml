@@ -50,12 +50,14 @@ jobs:
           fi
 
       - name: Build arm64 FOSS debug APK
-        run: ./gradlew assembleArm64FossDebug --console=plain
+        run: ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
 
       - name: Rename APK
         run: |
+          set -e
           mkdir -p app/build/outputs/apk/test-artifacts
           APK=$(find app/build/outputs/apk/arm64Foss/debug -name "*.apk" | head -n 1)
+          test -n "$APK"
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           cp "$APK" "app/build/outputs/apk/test-artifacts/Aura-Hi-Res-Qobuz-Privacy-${SHORT_SHA}.apk"
           echo "Test APK: Aura-Hi-Res-Qobuz-Privacy-${SHORT_SHA}.apk"
