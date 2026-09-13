@@ -1,82 +1,21 @@
 package iad1tya.echo.music.listentogether
 
-/**
- * Privacy-fork compatibility model layer.
- *
- * Listen Together itself is disabled: these are source-compatibility DTOs only and
- * contain no networking, persistence, sockets or telemetry.
- */
+/** Privacy-fork compatibility DTOs. No networking, persistence or telemetry. */
 enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, ERROR }
 enum class RoomRole { HOST, GUEST, NONE }
 enum class LogLevel { INFO, WARNING, ERROR, DEBUG }
 
 data class LogEntry(val timestamp: String, val level: LogLevel, val message: String, val details: String? = null)
-
-data class TrackInfo(
-    val id: String,
-    val title: String,
-    val artist: String,
-    val album: String? = null,
-    val duration: Long = 0L,
-    val thumbnail: String? = null,
-    val suggestedBy: String? = null,
-)
-
-data class UserInfo(
-    val userId: String,
-    val username: String,
-    val isHost: Boolean,
-    val isConnected: Boolean = true,
-)
-
-data class RoomState(
-    val roomCode: String,
-    val hostId: String,
-    val users: List<UserInfo> = emptyList(),
-    val currentTrack: TrackInfo? = null,
-    val isPlaying: Boolean = false,
-    val position: Long = 0L,
-    val lastUpdate: Long = 0L,
-    val volume: Float = 1f,
-    val queue: List<TrackInfo> = emptyList(),
-)
-
+data class TrackInfo(val id: String, val title: String, val artist: String, val album: String? = null, val duration: Long = 0L, val thumbnail: String? = null, val suggestedBy: String? = null)
+data class UserInfo(val userId: String, val username: String, val isHost: Boolean, val isConnected: Boolean = true)
+data class RoomState(val roomCode: String, val hostId: String, val users: List<UserInfo> = emptyList(), val currentTrack: TrackInfo? = null, val isPlaying: Boolean = false, val position: Long = 0L, val lastUpdate: Long = 0L, val volume: Float = 1f, val queue: List<TrackInfo> = emptyList())
 data class JoinRequestPayload(val userId: String, val username: String)
 data class RepliedMessage(val username: String, val message: String)
-data class ChatMessagePayload(
-    val userId: String,
-    val username: String,
-    val message: String,
-    val timestamp: Long,
-    val replyTo: RepliedMessage? = null,
-)
-data class SuggestionReceivedPayload(
-    val suggestionId: String,
-    val fromUserId: String,
-    val fromUsername: String,
-    val trackInfo: TrackInfo,
-)
-data class PlaybackActionPayload(
-    val action: String,
-    val trackId: String? = null,
-    val position: Long? = null,
-    val trackInfo: TrackInfo? = null,
-    val insertNext: Boolean? = null,
-    val queue: List<TrackInfo>? = null,
-    val queueTitle: String? = null,
-    val volume: Float? = null,
-    val serverTime: Long? = null,
-)
-data class SyncStatePayload(
-    val currentTrack: TrackInfo?,
-    val isPlaying: Boolean,
-    val position: Long,
-    val lastUpdate: Long,
-    val queue: List<TrackInfo>? = null,
-    val volume: Float? = null,
-)
+data class ChatMessagePayload(val userId: String, val username: String, val message: String, val timestamp: Long, val replyTo: RepliedMessage? = null)
+data class SuggestionReceivedPayload(val suggestionId: String, val fromUserId: String, val fromUsername: String, val trackInfo: TrackInfo)
+data class PlaybackActionPayload(val action: String, val trackId: String? = null, val position: Long? = null, val trackInfo: TrackInfo? = null, val insertNext: Boolean? = null, val queue: List<TrackInfo>? = null, val queueTitle: String? = null, val volume: Float? = null, val serverTime: Long? = null)
+data class SyncStatePayload(val currentTrack: TrackInfo?, val isPlaying: Boolean, val position: Long, val lastUpdate: Long, val queue: List<TrackInfo>? = null, val volume: Float? = null)
 data class JoinApprovedPayload(val roomCode: String, val userId: String, val sessionToken: String = "", val state: RoomState)
-
 data class UserJoinedPayload(val userId: String, val username: String)
 data class UserLeftPayload(val userId: String, val username: String)
 data class UserReconnectedPayload(val userId: String, val username: String)
@@ -112,9 +51,9 @@ sealed class ListenTogetherEvent {
     data class LocalSuggestionApproved(val payload: SuggestionReceivedPayload) : ListenTogetherEvent()
 }
 
+data class ListenTogetherServer(val name: String, val url: String, val location: String = "", val operator: String = "")
 object ListenTogetherServers {
-    data class Server(val name: String, val url: String, val location: String = "", val operator: String = "")
     val defaultServerUrl: String = ""
-    val defaultServers: List<Server> = emptyList()
-    fun allServers(): List<Server> = emptyList()
+    val defaultServers: List<ListenTogetherServer> = emptyList()
+    fun allServers(): List<ListenTogetherServer> = emptyList()
 }
