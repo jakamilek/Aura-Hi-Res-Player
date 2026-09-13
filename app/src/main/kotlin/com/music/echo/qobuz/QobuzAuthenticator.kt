@@ -1,6 +1,7 @@
 package iad1tya.echo.music.qobuz
 
 import iad1tya.echo.music.R
+import iad1tya.echo.music.utils.qobuz.QobuzTrack
 import timber.log.Timber
 
 /**
@@ -137,9 +138,22 @@ class QobuzAuthenticator(
 
 /** Qobuz format_id ladder: request the top, step down on rejection. */
 internal object QobuzQualityFormat {
-    const val HIRES_192 = 27
-    const val HIRES_96 = 7
-    const val CD = 6
-    const val LOSSLESS_44 = 6
-    val LOSSLESS_IDS = setOf(HIRES_192, HIRES_96, CD, LOSSLESS_44)
+    const val MP3_320 = 5           // LOSSY — never a valid own-subscription result
+    const val FLAC_CD = 6            // 16-bit / 44.1
+    const val HIRES_96 = 7          // 24-bit up to 96 kHz
+    const val HIRES_192 = 27        // 24-bit up to 192 kHz
+
+    /** The format ids that actually carry FLAC. [MP3_320] is deliberately NOT here. */
+    val LOSSLESS_IDS = setOf(FLAC_CD, HIRES_96, HIRES_192)
+
+    /**
+     * Descending playback ladder: 27 → 7 → 6. It stops at FLAC_CD ON PURPOSE.
+     *
+     * Requesting 5 (MP3 320) could only ever produce a LOSSY answer, which the resolver must reject
+     * anyway (see [QobuzFileUrlResponse.isLosslessDelivery]) — so asking for it was a guaranteed-wasted
+     * round trip inside the caller's time budget. Note this does NOT stop a lossy account from being
+     * detected: Qobuz downgrades server-side, so a free/lossy tier answers the format-27 request itself
+     * with format 5 / audio/mpeg, which is rejected and falls through to the normal proxy path.
+     */
+    val LADDER = listOf(HIRES_192, HIRES_96, FLAC_CD)
 }
