@@ -16,7 +16,7 @@ jobs:
       - name: Audit modules and suspicious endpoints
         shell: bash
         run: |
-          set -u
+          set -euo pipefail
           echo '=== Included Gradle modules ==='
           grep -nE '^include\(' settings.gradle.kts || true
           echo
@@ -30,9 +30,37 @@ jobs:
           done
           echo
           echo '=== Endpoint inventory (source only) ==='
-          grep -RhoE 'https?://[^"'"'"' )}<>]+' app innertube migration kugou lrclib betterlyrics simpmusic youlyplus canvas artistvideo applecanvas echomusiccanvas paxsenixlyrics unison jiosaavn shazamkit 2>/dev/null | sort -u || true
+          grep -RhoE 'https?://[^"'"'"' )}<>]+' app innertube migration kugou lrclib betterlyrics simpmusic youlyplus canvas artistvideo applecanvas echomusiccanvas paxsenixlyrics unison 2>/dev/null | sort -u || true
+          echo
+          echo '=== Endpoint ownership map ==='
+          for endpoint in \
+            'api.deezer.com' \
+            'api-v2.soundcloud.com' \
+            'api.soundcloud.com' \
+            'api-widget.soundcloud.com' \
+            'soundcloud.com' \
+            'ws.audioscrobbler.com' \
+            'www.last.fm/api/auth' \
+            'api.listenbrainz.org' \
+            'lyricsplus.prjktla.workers.dev' \
+            'raw.githubusercontent.com/hck0n3/Aura-Hi-Res-Player/main/player_configs.json'; do
+            echo "--- $endpoint ---"
+            grep -Rnil --exclude-dir=.git --exclude='*.png' --exclude='*.jpg' --exclude='*.webp' "$endpoint" . || true
+          done
           echo
           echo '=== Module directories ==='
           for d in jiosaavn shazamkit innertube migration kugou lrclib betterlyrics simpmusic youlyplus canvas artistvideo applecanvas echomusiccanvas paxsenixlyrics unison; do
             if [ -d "$d" ]; then echo "PRESENT $d"; else echo "ABSENT $d"; fi
           done
+          echo
+          echo '=== Removed endpoint regression check ==='
+          for endpoint in \
+            'qobuz.kennyy.com.br' \
+            'round-math-d64e.toberto4000.workers.dev/ai' \
+            'round-math-d64e.toberto4000.workers.dev/recognize'; do
+            if grep -Rni --exclude-dir=.git --exclude='*.png' --exclude='*.jpg' --exclude='*.webp' "$endpoint" .; then
+              echo "ERROR: removed endpoint returned: $endpoint"
+              exit 1
+            fi
+          done
+          echo 'No removed endpoints found.'
