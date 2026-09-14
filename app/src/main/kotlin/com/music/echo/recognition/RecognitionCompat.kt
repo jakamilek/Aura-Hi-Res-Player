@@ -5,7 +5,7 @@ import android.content.Intent
 import android.os.IBinder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import com.music.shazamkit.models.RecognitionStatus
+enum class RecognitionStatus { Ready }
 
 /** Privacy-fork compatibility layer. Song recognition is disabled and performs no I/O. */
 object RemoteRecognitionConfig {

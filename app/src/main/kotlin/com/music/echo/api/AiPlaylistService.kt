@@ -49,14 +49,7 @@ object AiPlaylistService {
 
     private const val DEFAULT_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-    /** Owner-hosted Workers AI relay: keyless primary. Shares the license Worker (routes /verify and /demo untouched). */
-    private const val AURA_WORKER_URL = "https://round-math-d64e.toberto4000.workers.dev/ai"
 
-    /** Suggested model for the Worker; the Worker may ignore/override it server-side. */
-    private const val AURA_WORKER_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
-
-    /** Public keyless OpenAI-compatible endpoint, used when the Aura Worker is unavailable. */
-    private const val POLLINATIONS_URL = "https://text.pollinations.ai/openai"
 
     /**
      * The FREE Pollinations models, tried IN ORDER until one returns a usable playlist. If every model fails
@@ -73,16 +66,13 @@ object AiPlaylistService {
      * Keep it honest: list only what actually answers. Real redundancy needs a SECOND PROVIDER (the Aura
      * Worker above), not more names for the same one.
      */
-    private val POLLINATIONS_MODELS = listOf("openai")
 
     /** Modest per-endpoint retries for the keyless chain so the chained worst case stays bounded. */
-    private const val KEYLESS_MAX_RETRIES = 2
 
     /**
      * Per-MODEL retries for Pollinations. Kept small (2) because we now try several models in turn, so
      * total worst-case = models × retries — still bounded, to respect the battery/heat budget.
      */
-    private const val POLLINATIONS_MAX_RETRIES = 2
 
     class UnsupportedProviderException(val providerName: String) :
         Exception("Provider not supported for AI playlists: $providerName")
@@ -218,45 +208,7 @@ object AiPlaylistService {
             )
         }
 
-        // 2. Aura Worker (keyless primary). Probe-style: only a 5xx from a deployed Worker is retried;
-        // a 4xx (incl. the current not-yet-deployed 404) or a 200 with no usable content fast-fails
-        // so we fall through to Pollinations without burning retries on a route that isn't serving.
-        val workerResult = requestChatCompletion(
-            url = AURA_WORKER_URL,
-            apiKey = null,
-            model = AURA_WORKER_MODEL,
-            messages = messages,
-            maxTokens = maxTokens,
-            temperature = temperature,
-            parse = parse,
-            maxRetries = KEYLESS_MAX_RETRIES,
-            retryEmptyContent = false,
-        )
-        if (workerResult.isSuccess) return workerResult
-
-        // 3. Pollinations fallback (keyless) — try SEVERAL free models in turn until one returns a
-        // usable playlist. A busy/rate-limited/empty model just advances to the next; only if EVERY
-        // model fails does the keyless chain give up. For generation the caller (AiPlaylistGenerator)
-        // then builds a non-AI playlist from search/radio, so the feature never dead-ends on
-        // "servicio no disponible"; for modification the caller no-ops instead (never guesses an edit).
-        var lastFailure: Throwable? = null
-        for (pollModel in POLLINATIONS_MODELS) {
-            val r = requestChatCompletion(
-                url = POLLINATIONS_URL,
-                apiKey = null,
-                model = pollModel,
-                messages = messages,
-                maxTokens = maxTokens,
-                temperature = temperature,
-                parse = parse,
-                maxRetries = POLLINATIONS_MAX_RETRIES,
-                retryEmptyContent = true,
-            )
-            if (r.isSuccess) return r
-            lastFailure = r.exceptionOrNull()
-        }
-
-        return Result.failure(AiServiceUnavailableException(lastFailure))
+        return Result.failure(MissingApiKeyException())
     }
 
     /**

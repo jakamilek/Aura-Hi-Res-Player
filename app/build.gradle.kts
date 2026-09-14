@@ -598,13 +598,11 @@ dependencies {
     implementation(project(":simpmusic"))
     implementation(project(":youlyplus"))
     implementation(project(":canvas"))
-    implementation(project(":shazamkit"))
     implementation(project(":artistvideo"))
     implementation(project(":applecanvas"))
     implementation(project(":echomusiccanvas"))
     implementation(project(":paxsenixlyrics"))
     implementation(project(":unison"))
-    implementation(project(":jiosaavn"))
 
 
     implementation(libs.ktor.client.core)

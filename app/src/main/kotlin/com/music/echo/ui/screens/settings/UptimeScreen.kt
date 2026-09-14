@@ -55,8 +55,7 @@ fun UptimeScreen(
     val musicServices = remember {
         mutableStateListOf(
             ServiceStatus("Catálogo principal", { "https://music.youtube.com" }),
-            ServiceStatus("JioSaavn", { com.music.jiosaavn.DeviceRouter.getCurrentServer() }, { "Server ${com.music.jiosaavn.DeviceRouter.getCurrentServerIndex() + 1}" }),
-            ServiceStatus("Qobuz", { "https://qobuz.kennyy.com.br" })
+            ServiceStatus("Qobuz", { "https://www.qobuz.com" })
         )
     }
 
