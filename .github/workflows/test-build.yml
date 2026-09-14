@@ -9,9 +9,6 @@ on:
     branches:
       - 'qobuz-privacy'
 
-permissions:
-  contents: write
-
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -21,59 +18,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
-
-      - name: Apply audited privacy cleanup
-        if: ${{ !contains(github.event.head_commit.message, 'Apply audited privacy cleanup') }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git rm -r --ignore-unmatch jiosaavn shazamkit migration/src/main/kotlin/com/aura/migration/source/deezer/DeezerSource.kt app/src/main/kotlin/com/music/echo/utils/cipher/RemotePlayerConfig.kt
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          p = Path('app/src/main/kotlin/com/music/echo/utils/cipher/FunctionNameExtractor.kt')
-          s = p.read_text()
-          s, n = re.subn(
-              r'''\n        // Self-healing second source \(AUGMENT-ONLY\):.*?\n        Timber\.tag\(TAG\)\.w\("Known hashes: \$\{KNOWN_PLAYER_CONFIGS\.keys\.joinToString\(\)\}"\)''',
-              '\n        Timber.tag(TAG).w("Known hashes: ${KNOWN_PLAYER_CONFIGS.keys.joinToString()}")',
-              s, count=1, flags=re.S)
-          if n != 1:
-              raise SystemExit(f'FunctionNameExtractor remote block replacement count={n}')
-          s = s.replace('hardcoded/remote config', 'hardcoded config')
-          s = s.replace('hardcoded/remote', 'hardcoded')
-          p.write_text(s)
-
-          p = Path('app/src/main/kotlin/com/music/echo/utils/cipher/CipherDeobfuscator.kt')
-          s = p.read_text()
-          s, n = re.subn(r'''\n    // The RemotePlayerConfig\.configEpoch.*?\n    private var builtConfigEpoch = -1\n''', '\n', s, count=1, flags=re.S)
-          if n != 1:
-              raise SystemExit(f'CipherDeobfuscator epoch declaration replacement count={n}')
-          s, n = re.subn(
-              r'''\n        // Reuse only while the WebView was built against the CURRENT remote-config epoch:.*?\n        var builtEpoch = epochAtStart\n''',
-              '''\n        // Reuse the existing WebView unless an explicit player.js refresh was requested.\n        if (!forceRefresh && cipherWebView != null) {\n            Timber.tag(TAG).d("Reusing existing CipherWebView (hash=$currentPlayerHash)")\n            return cipherWebView\n        }\n''', s, count=1, flags=re.S)
-          if n != 1:
-              raise SystemExit(f'CipherDeobfuscator reuse block replacement count={n}')
-          s, n = re.subn(
-              r'''\n        if \(analysis\.sigInfo == null\) \{\n            // REACTIVE self-healing:.*?\n        \}\n\n        val sigInfo = analysis\.sigInfo''',
-              '\n        val sigInfo = analysis.sigInfo', s, count=1, flags=re.S)
-          if n != 1:
-              raise SystemExit(f'CipherDeobfuscator reactive block replacement count={n}')
-          s = s.replace('builtConfigEpoch = builtEpoch\n', '')
-          p.write_text(s)
-          PY
-
-          echo '=== Remaining banned privacy references ==='
-          if grep -Rni --exclude-dir=.git --exclude-dir=build --exclude='*.png' --exclude='*.jpg' --exclude='*.webp' -E 'api\.deezer\.com|qobuz\.kennyy\.com\.br|round-math-d64e\.toberto4000\.workers\.dev|raw\.githubusercontent\.com/hck0n3/Aura-Hi-Res-Player/main/player_configs\.json|RemotePlayerConfig|jiosaavn|shazamkit' .; then
-            echo 'ERROR: banned reference remains'
-            exit 1
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'Apply audited privacy cleanup'
-          git push
-          git pull --ff-only
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -114,7 +58,7 @@ jobs:
           mkdir -p app/build/outputs/apk/test-artifacts
           APK=$(find app/build/outputs/apk/arm64Foss/debug -name "*.apk" | head -n 1)
           test -n "$APK"
-          SHORT_SHA=$(git rev-parse --short HEAD)
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           cp "$APK" "app/build/outputs/apk/test-artifacts/Aura-Hi-Res-Qobuz-Privacy-${SHORT_SHA}.apk"
           echo "Test APK: Aura-Hi-Res-Qobuz-Privacy-${SHORT_SHA}.apk"
 
