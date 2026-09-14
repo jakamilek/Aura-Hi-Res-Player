@@ -236,28 +236,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
-        // LastFM API keys from GitHub Secrets
-//        val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") ?: System.getenv("LASTFM_API_KEY") ?: ""
-//        val lastFmSecret = localProperties.getProperty("LASTFM_SECRET") ?: System.getenv("LASTFM_SECRET") ?: ""
-        
-        // Prefer local.properties / CI secret (keeps keys out of source); fall back to the embedded
-        // values so existing release builds keep working. NOTE: a client API key can never be fully
-        // hidden from the APK — LastFM keys are designed to be embedded; this is low-severity.
-        // takeIf { isNotBlank() } is CRITICAL: the CI workflows set LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}.
-        // When that GitHub secret is unset/empty, the env var is present but EMPTY (""), and getenv returns ""
-        // (not null) — so a plain `?:` would NOT fall through and the released APK shipped an EMPTY Last.fm key
-        // → auth.getMobileSession returned error 6 "invalid parameters" → Last.fm login broken for everyone.
-        // Treating blank as absent falls through to the embedded working key (Last.fm keys are meant to embed).
-        val lastFmKey = localProperties.getProperty("LASTFM_API_KEY")?.takeIf { it.isNotBlank() }
-            ?: System.getenv("LASTFM_API_KEY")?.takeIf { it.isNotBlank() }
-            ?: "694cbaa17c78202a133eac4656dff651"
-        val lastFmSecret = localProperties.getProperty("LASTFM_SECRET")?.takeIf { it.isNotBlank() }
-            ?: System.getenv("LASTFM_SECRET")?.takeIf { it.isNotBlank() }
-            ?: "a0fdaf6060f19128c4a84f297c71e627"
-
-        buildConfigField("String", "LASTFM_API_KEY", "\"$lastFmKey\"")
-        buildConfigField("String", "LASTFM_SECRET", "\"$lastFmSecret\"")
-
+        // Last.fm / ListenBrainz are disabled in the privacy build.
+        // No API credentials are embedded in BuildConfig.
         // Tidal OAuth client id, embedded so the owner never re-pastes it (same pattern as the LastFM
         // keys above). A client id is NOT a secret — Tidal's Open API is PKCE-only (no client secret),
         // so the id is public by design; this is low-severity and consistent with the house rule.
