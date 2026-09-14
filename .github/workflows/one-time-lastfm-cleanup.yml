@@ -20,19 +20,16 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           p = Path('app/build.gradle.kts')
           s = p.read_text()
-          pattern = re.compile(
-              r'\n\s*// LastFM API keys from GitHub Secrets.*?\n\s*// Tidal OAuth client id, embedded',
-              re.S,
-          )
-          replacement = '''\n\n        // Last.fm / ListenBrainz are disabled in the privacy build.\n        // No API credentials are embedded in BuildConfig.\n        // Tidal OAuth client id, embedded'''
-          new, n = pattern.subn(replacement, s, count=1)
-          if n != 1:
-              raise SystemExit('Expected exactly one Last.fm credential block')
-          p.write_text(new)
+          start = s.find('// LastFM API keys from GitHub Secrets')
+          end = s.find('// Tidal OAuth client id, embedded', start)
+          if start < 0 or end < 0 or end <= start:
+              raise SystemExit(f'Last.fm block markers not found: start={start} end={end}')
+          line_start = s.rfind('\n', 0, start) + 1
+          s = s[:line_start] + '''        // Last.fm / ListenBrainz are disabled in the privacy build.\n        // No API credentials are embedded in BuildConfig.\n\n        ''' + s[end:]
+          p.write_text(s)
           PY
 
       - name: Verify no Last.fm credentials remain in Gradle config
