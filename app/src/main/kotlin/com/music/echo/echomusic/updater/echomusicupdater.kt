@@ -42,6 +42,14 @@ sealed class EchoUpdateStatus {
     data class Error(val message: String) : EchoUpdateStatus()
 }
 
+/** Extract HTTP(S) URLs from changelog text for the existing link-rendering UI. */
+fun String.extractUrls(): List<Pair<IntRange, String>> {
+    val regex = Regex("https?://[^\\s<>\\\"')]+")
+    return regex.findAll(this).map { match ->
+        match.range to match.value.trimEnd('.', ',', ';', ':', '!', '?', ')', ']', '}')
+    }.filter { (range, url) -> url.isNotBlank() && range.first < range.last + 1 }.toList()
+}
+
 @Composable
 fun UpdateScreen(navController: NavHostController) {
     Column(
