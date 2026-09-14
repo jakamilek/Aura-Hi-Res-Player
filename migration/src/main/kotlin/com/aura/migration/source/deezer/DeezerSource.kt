@@ -22,6 +22,12 @@ class DeezerSource(@Suppress("UNUSED_PARAMETER") private val http: HttpJson) : P
 
     override fun accepts(input: String): Boolean = false
 
+    /** Compatibility helpers for the existing migration UI; neither performs network I/O. */
+    fun isProfile(input: String): Boolean = false
+
+    fun parseId(input: String): String =
+        throw SourceError.Unsupported("Deezer is disabled in this privacy build")
+
     override suspend fun listPlaylists(input: String?): List<SourcePlaylist> =
         throw SourceError.Unsupported("Deezer is disabled in this privacy build")
 
