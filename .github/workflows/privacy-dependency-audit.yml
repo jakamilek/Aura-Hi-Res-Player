@@ -1,0 +1,38 @@
+name: Privacy dependency and endpoint audit
+
+on:
+  push:
+    branches: [qobuz-privacy]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit modules and suspicious endpoints
+        shell: bash
+        run: |
+          set -u
+          echo '=== Included Gradle modules ==='
+          grep -nE '^include\(' settings.gradle.kts || true
+          echo
+          echo '=== App project dependencies ==='
+          grep -nE 'implementation\(project\(|gmsImplementation|firebase|google.api.services.drive|jiosaavn|shazamkit' app/build.gradle.kts || true
+          echo
+          echo '=== Source references to removable providers/features ==='
+          for term in jiosaavn shazamkit ListenTogether MusicRecognition LastFM lastfm round-math-d64e qobuz.kennyy.com.br; do
+            echo "--- $term ---"
+            grep -Rni --exclude-dir=.git --exclude='*.png' --exclude='*.jpg' --exclude='*.webp' "$term" . || true
+          done
+          echo
+          echo '=== Endpoint inventory (source only) ==='
+          grep -RhoE 'https?://[^"'"'"' )}<>]+' app innertube migration kugou lrclib betterlyrics simpmusic youlyplus canvas artistvideo applecanvas echomusiccanvas paxsenixlyrics unison jiosaavn shazamkit 2>/dev/null | sort -u || true
+          echo
+          echo '=== Module directories ==='
+          for d in jiosaavn shazamkit innertube migration kugou lrclib betterlyrics simpmusic youlyplus canvas artistvideo applecanvas echomusiccanvas paxsenixlyrics unison; do
+            if [ -d "$d" ]; then echo "PRESENT $d"; else echo "ABSENT $d"; fi
+          done
