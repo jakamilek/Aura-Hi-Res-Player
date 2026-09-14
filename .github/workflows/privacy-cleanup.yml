@@ -1,0 +1,74 @@
+name: Apply audited privacy cleanup
+
+on:
+  push:
+    branches: [qobuz-privacy]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: ${{ !contains(github.event.head_commit.message, '[privacy-cleanup]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply audited cleanup
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def edit(path, fn):
+              p = Path(path)
+              s = p.read_text()
+              n = fn(s)
+              if n == s:
+                  raise SystemExit(f'NO CHANGE: {path}')
+              p.write_text(n)
+
+          # Remove the audited JioSaavn fallback block; Qobuz failure now proceeds to YouTube resolution.
+          edit('app/src/main/kotlin/com/music/echo/utils/YTPlayerUtils.kt', lambda s: re.sub(
+              r'\n        var saavnFailed = false.*?\n        // BOUND the YouTube resolve',
+              '\n        // BOUND the YouTube resolve', s, count=1, flags=re.S))
+
+          # Remove JioSaavn startup/router and obsolete uptime checks.
+          edit('app/src/main/kotlin/com/music/echo/App.kt', lambda s: s.replace(
+              '        com.music.jiosaavn.DeviceRouter.init(this)\n        Timber.d("Device ID: ${com.music.jiosaavn.DeviceRouter.getDeviceId()} | Assigned JioSaavn Server: ${com.music.jiosaavn.DeviceRouter.getCurrentServer()}")\n', ''))
+          edit('app/src/main/kotlin/com/music/echo/ui/screens/settings/UptimeScreen.kt', lambda s: s.replace(
+              '            ServiceStatus("JioSaavn", { com.music.jiosaavn.DeviceRouter.getCurrentServer() }, { "Server ${com.music.jiosaavn.DeviceRouter.getCurrentServerIndex() + 1}" }),\n            ServiceStatus("Qobuz", { "https://qobuz.kennyy.com.br" })\n', '            ServiceStatus("Qobuz", { "https://www.qobuz.com" })\n'))
+          edit('app/src/main/kotlin/com/music/echo/ui/screens/settings/AboutScreen.kt', lambda s: s.replace(
+              'y, se no lo consigue, cae a JioSaavn en 320 kbps avisándote en pantalla',
+              'y, si no lo consigue, continúa con la ruta normal de reproducción avisándote en pantalla'))
+
+          # Disable automatic/keyless AI relays. BYO API-key mode remains intact.
+          def ai(s):
+              s = re.sub(r'\n    /\*\* Owner-hosted Workers AI relay:.*?private const val AURA_WORKER_MODEL = "[^"]+"\n', '\n', s, count=1, flags=re.S)
+              s = re.sub(r'\n    /\*\* Public keyless OpenAI-compatible endpoint.*?private const val POLLINATIONS_URL = "[^"]+"\n', '\n', s, count=1, flags=re.S)
+              s = re.sub(r'\n    private val POLLINATIONS_MODELS = listOf\("openai"\)\n', '\n', s, count=1)
+              s = re.sub(r'\n    private const val KEYLESS_MAX_RETRIES = 2\n', '\n', s, count=1)
+              s = re.sub(r'\n    private const val POLLINATIONS_MAX_RETRIES = 2\n', '\n', s, count=1)
+              s = re.sub(r'\n        // 2\. Aura Worker.*?\n        return Result\.failure\(AiServiceUnavailableException\(lastFailure\)\)',
+                         '\n        return Result.failure(MissingApiKeyException())', s, count=1, flags=re.S)
+              return s
+          edit('app/src/main/kotlin/com/music/echo/api/AiPlaylistService.kt', ai)
+
+          # RecognitionCompat no longer needs the Shazam module merely for an enum type.
+          edit('app/src/main/kotlin/com/music/echo/recognition/RecognitionCompat.kt', lambda s: s.replace(
+              'import com.music.shazamkit.models.RecognitionStatus\n',
+              'enum class RecognitionStatus { Ready }\n'))
+
+          # Remove audited dead feature modules from the build graph.
+          edit('settings.gradle.kts', lambda s: re.sub(r'^include\(":shazamkit"\)\n', '', re.sub(r'^include\(":jiosaavn"\)\n', '', s, flags=re.M), flags=re.M))
+          edit('app/build.gradle.kts', lambda s: re.sub(r'^\s*implementation\(project\(":(?:shazamkit|jiosaavn)"\)\)\n', '', s, flags=re.M))
+
+          # Remove this one-shot workflow after it has done its job.
+          Path('.github/workflows/privacy-cleanup.yml').unlink()
+          PY
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Privacy: remove audited Saavn, Shazam and keyless AI paths [privacy-cleanup]'
+          git push
