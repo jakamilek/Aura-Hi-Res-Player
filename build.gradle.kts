@@ -10,7 +10,6 @@ buildscript {
         google()
         mavenCentral()
         maven { setUrl("https://jitpack.io") }
-        maven { setUrl("https://maven.aliyun.com/repository/public") }
     }
     dependencies {
         classpath(libs.gradle)
@@ -25,6 +24,15 @@ tasks.register<Delete>("clean") {
 }
 
 subprojects {
+    configurations.configureEach {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "com.github.promeg" && requested.name == "tinypinyin") {
+                useVersion("v2.0.3")
+                because("TinyPinyin is published by JitPack under the v2.0.3 tag")
+            }
+        }
+    }
+
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
             if (project.findProperty("enableComposeCompilerReports") == "true") {
