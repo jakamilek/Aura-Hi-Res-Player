@@ -2,6 +2,7 @@ name: Qobuz Privacy Fork Test Build
 
 # Test build for the privacy-hardened Qobuz fork.
 # Builds an arm64 FOSS debug APK and uploads it as a workflow artifact only.
+# CI trigger refresh: keep this workflow active on every qobuz-privacy push.
 
 on:
   workflow_dispatch:
