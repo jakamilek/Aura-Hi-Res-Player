@@ -132,6 +132,13 @@ fun saveBetaUpdatesSetting(context: Context, enabled: Boolean) = Unit
 
 fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean = false
 
+/** Compatibility stubs: privacy builds never download or retain update APKs. */
+fun getDownloadedApkCount(context: Context): Int = 0
+
+fun clearDownloadedApks(context: Context): Boolean = true
+
+fun autoClearOldApks(context: Context) = Unit
+
 suspend fun checkForUpdate(
     context: Context,
     onSuccess: (tag: String, isAvailable: Boolean, changelog: List<ChangelogSection>, size: String, sizeBytes: Long, date: String, description: String?, imageUrl: String?, apkUrl: String?) -> Unit,
