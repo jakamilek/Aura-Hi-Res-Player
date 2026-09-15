@@ -1,6 +1,6 @@
 # Privacy fork dependency audit
 
-## Audited on 2026-09-14
+## Audited on 2026-09-15
 
 The `qobuz-privacy` branch is being audited for dependency and endpoint provenance before each release candidate build.
 
@@ -22,6 +22,7 @@ The `qobuz-privacy` branch is being audited for dependency and endpoint provenan
 - Tidal API/OAuth and playback.
 - Spotify API/authentication and playback.
 - YouTube/InnerTube code that is still structurally used by the main player. This is a separate cleanup target because it is deeply integrated with `MusicService`/`YTPlayerUtils`.
+- TinyPinyin core for the existing lyric romanization path; the privacy build pins the JitPack tag `v2.0.3` rather than restoring the removed Aliyun Maven mirror.
 
 ### Deferred cleanup
 
