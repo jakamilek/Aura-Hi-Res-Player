@@ -28,6 +28,11 @@
         android:name="iad1tya.echo.music.widget.RecognitionTileService"
         tools:node="remove" />
 
+    <!-- The removed APK updater no longer needs WorkManager's foreground service. -->
+    <service
+        android:name="androidx.work.impl.foreground.SystemForegroundService"
+        tools:node="remove" />
+
     <application>
         <!-- Remove Cast provider in FOSS build since GMS is not available -->
         <meta-data
