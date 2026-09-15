@@ -118,8 +118,6 @@ class App : Application(), SingletonImageLoader.Factory, androidx.work.Configura
         // this (and refreshes the SharedPreferences copy) once initializeSettings() runs; see below.
         seedImageCacheSizeMirror(this)
 
-        com.music.jiosaavn.DeviceRouter.init(this)
-        Timber.d("Device ID: ${com.music.jiosaavn.DeviceRouter.getDeviceId()} | Assigned JioSaavn Server: ${com.music.jiosaavn.DeviceRouter.getCurrentServer()}")
 
         // NOTE: do NOT add a destructive deleteDatabase("song.db") on startup. The Room schema has
         // complete migration coverage (see MusicDatabase), so wiping the DB only erases the user's

@@ -7,7 +7,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { setUrl("https://jitpack.io") }
-        maven { setUrl("https://maven.aliyun.com/repository/public") }
     }
 }
 
@@ -26,7 +25,6 @@ include(":lrclib")
 include(":betterlyrics")
 include(":simpmusic")
 include(":youlyplus")
-include(":shazamkit")
 include(":artistvideo")
 include(":applecanvas")
 include(":echomusiccanvas")
@@ -49,4 +47,3 @@ include(":unison")
 //        substitute(module("com.github.teamnewpipe:NewPipeExtractor")).using(project(":extractor"))
 //    }
 //}
-include(":jiosaavn")

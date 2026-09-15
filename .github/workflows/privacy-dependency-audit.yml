@@ -1,0 +1,73 @@
+name: Privacy dependency and endpoint audit
+
+on:
+  push:
+    branches: [qobuz-privacy]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit modules and suspicious endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_DIRS=(app innertube migration kugou lrclib betterlyrics simpmusic youlyplus canvas artistvideo applecanvas echomusiccanvas paxsenixlyrics unison)
+          GREP_ARGS=(--exclude-dir=.git --exclude='*.png' --exclude='*.jpg' --exclude='*.jpeg' --exclude='*.webp' --exclude='*.txt')
+          echo '=== Included Gradle modules ==='
+          grep -nE '^include\(' settings.gradle.kts || true
+          echo
+          echo '=== App project dependencies ==='
+          grep -nE 'implementation\(project\(|gmsImplementation|firebase|google.api.services.drive|jiosaavn|shazamkit' app/build.gradle.kts || true
+          echo
+          echo '=== Source references to removable providers/features ==='
+          for term in jiosaavn shazamkit ListenTogether MusicRecognition LastFM lastfm round-math-d64e qobuz.kennyy.com.br; do
+            echo "--- $term ---"
+            grep -Rni "${GREP_ARGS[@]}" --include='*.kt' --include='*.java' --include='*.xml' --include='*.gradle*' --include='*.kts' "$term" "${SOURCE_DIRS[@]}" settings.gradle.kts gradle/libs.versions.toml 2>/dev/null || true
+          done
+          echo
+          echo '=== Endpoint inventory (source only) ==='
+          grep -RhoE "https?://[^\"' )}<>]+" "${SOURCE_DIRS[@]}" 2>/dev/null | sort -u || true
+          echo
+          echo '=== Endpoint ownership map ==='
+          for endpoint in \
+            'api.deezer.com' \
+            'api-v2.soundcloud.com' \
+            'api.soundcloud.com' \
+            'api-widget.soundcloud.com' \
+            'soundcloud.com' \
+            'ws.audioscrobbler.com' \
+            'www.last.fm/api/auth' \
+            'api.listenbrainz.org' \
+            'lyricsplus.prjktla.workers.dev' \
+            'raw.githubusercontent.com/hck0n3/Aura-Hi-Res-Player/main/player_configs.json' \
+            'api.github.com/repos/hck0n3/Aura-Hi-Res-Player/releases/latest' \
+            'github.com/hck0n3/Aura-Hi-Res-Player/releases/download'; do
+            echo "--- $endpoint ---"
+            grep -Rnil "${GREP_ARGS[@]}" --include='*.kt' --include='*.java' --include='*.xml' --include='*.gradle*' --include='*.kts' "$endpoint" "${SOURCE_DIRS[@]}" settings.gradle.kts gradle/libs.versions.toml 2>/dev/null || true
+          done
+          echo
+          echo '=== Module directories ==='
+          for d in jiosaavn shazamkit innertube migration kugou lrclib betterlyrics simpmusic youlyplus canvas artistvideo applecanvas echomusiccanvas paxsenixlyrics unison; do
+            if [ -d "$d" ]; then echo "PRESENT $d"; else echo "ABSENT $d"; fi
+          done
+          echo
+          echo '=== Removed endpoint regression check (source only) ==='
+          for endpoint in \
+            'qobuz.kennyy.com.br' \
+            'round-math-d64e.toberto4000.workers.dev/ai' \
+            'round-math-d64e.toberto4000.workers.dev/recognize' \
+            'api.github.com/repos/hck0n3/Aura-Hi-Res-Player/releases/latest' \
+            'github.com/hck0n3/Aura-Hi-Res-Player/releases/download' \
+            'raw.githubusercontent.com/hck0n3/Aura-Hi-Res-Player/main/player_configs.json'; do
+            if grep -Rni "${GREP_ARGS[@]}" --include='*.kt' --include='*.java' --include='*.xml' --include='*.gradle*' --include='*.kts' "$endpoint" "${SOURCE_DIRS[@]}" settings.gradle.kts gradle/libs.versions.toml 2>/dev/null; then
+              echo "ERROR: removed endpoint returned in source: $endpoint"
+              exit 1
+            fi
+          done
+          echo 'No removed endpoints found in source.'
