@@ -1,9 +1,5 @@
 name: Qobuz Privacy Fork Test Build
 
-# Test build for the privacy-hardened Qobuz fork.
-# Builds an arm64 FOSS debug APK and uploads it as a workflow artifact only.
-# CI trigger refresh: keep this workflow active on qobuz-privacy pushes and PR updates.
-
 on:
   workflow_dispatch:
   push:
@@ -54,7 +50,16 @@ jobs:
           fi
 
       - name: Build arm64 FOSS debug APK
-        run: ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/build.gradle.kts')
+          s = p.read_text()
+          s = s.replace('buildConfigField("String", "LASTFM_API_KEY", "\\\"");', 'buildConfigField("String", "LASTFM_API_KEY", "\\\"\\\"");')
+          s = s.replace('buildConfigField("String", "LASTFM_SECRET", "\\\"")', 'buildConfigField("String", "LASTFM_SECRET", "\\\"\\\"")')
+          p.write_text(s)
+          PY
+          ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
 
       - name: Rename APK
         run: |
