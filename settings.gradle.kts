@@ -20,14 +20,10 @@ include(":app")
 include(":migration")
 include(":canvas")
 include(":kugou")
-include(":youlyplus")
-include(":artistvideo")
 include(":applecanvas")
 include(":echomusiccanvas")
 include(":paxsenixlyrics")
 include(":unison")
 
-
 // YouTube/InnerTube and the removed third-party lyrics modules are intentionally
 // not included in the privacy fork.
-
