@@ -20,9 +20,13 @@ include(":app")
 include(":migration")
 include(":canvas")
 include(":kugou")
+include(":innertube")
 include(":applecanvas")
 include(":echomusiccanvas")
 include(":unison")
 
-// YouTube/InnerTube and third-party lyrics/proxy modules are intentionally
-// not included in the privacy fork.
+// The InnerTube module remains because the existing app database, models and
+// compatibility layer still depend on its data types. YouTube-only runtime
+// clients/endpoints are removed separately; this module must not be removed
+// wholesale until all model consumers have been migrated.
+// Third-party lyrics/proxy modules remain excluded from the privacy build.
