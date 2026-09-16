@@ -49,17 +49,47 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-      - name: Build arm64 FOSS debug APK
+      - name: Privacy source audit and build sanitization
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
+          roots = [Path('app'), Path('innertube'), Path('kugou'), Path('lrclib'), Path('betterlyrics'), Path('simpmusic'), Path('youlyplus'), Path('artistvideo'), Path('applecanvas'), Path('echomusiccanvas'), Path('paxsenixlyrics'), Path('unison')]
+          files = [p for root in roots if root.exists() for p in root.rglob('*') if p.is_file() and p.suffix in {'.kt','.kts','.java','.xml','.json','.properties','.txt'}]
+          forbidden = [
+              'api-free.deepl.com', 'api.deepl.com', 'api.mistral.ai', 'openrouter.ai',
+              'lyrics-api.boidu.dev', 'lrclib.net', 'api-lyrics.simpmusic.org',
+              'vivi-yt-music-server.onrender.com', 'tidal-api.geeked.wtf', 'tidal-api.binimum.org'
+          ]
+          hits = []
+          for p in files:
+              try: text = p.read_text(errors='ignore')
+              except Exception: continue
+              for domain in forbidden:
+                  if domain in text:
+                      hits.append(f'{p}: {domain}')
+          if hits:
+              print('FORBIDDEN NETWORK ENDPOINTS FOUND:')
+              print('\n'.join(hits))
+              raise SystemExit(1)
+
+          # Remove Firebase Analytics/Crashlytics from the CI-produced APK without
+          # touching Google Play Services dependencies required by Cast.
           p = Path('app/build.gradle.kts')
           s = p.read_text()
+          s = s.replace('if (hasGoogleServicesConfig) { apply(plugin = "com.google.gms.google-services"); apply(plugin = "com.google.firebase.crashlytics") }', 'if (hasGoogleServicesConfig) { apply(plugin = "com.google.gms.google-services") }')
+          s = re.sub(r'"gmsImplementation"\(platform\("com\.google\.firebase:firebase-bom:[^\"]+"\)\);\s*', '', s)
+          s = re.sub(r'"gmsImplementation"\("com\.google\.firebase:firebase-(analytics|crashlytics)"\);\s*', '', s)
           s = s.replace('buildConfigField("String", "LASTFM_API_KEY", "\\\"");', 'buildConfigField("String", "LASTFM_API_KEY", "\\\"\\\"");')
           s = s.replace('buildConfigField("String", "LASTFM_SECRET", "\\\"")', 'buildConfigField("String", "LASTFM_SECRET", "\\\"\\\"")')
           p.write_text(s)
           PY
-          ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
+          echo 'Privacy source audit: no forbidden provider endpoints found; Firebase telemetry stripped from CI build configuration.'
+
+      - name: Build arm64 FOSS debug APK
+        run: ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
 
       - name: Rename APK
         run: |
