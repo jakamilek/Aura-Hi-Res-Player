@@ -25,7 +25,7 @@ kotlin {
 dependencies {
     // Serialization is retained for the local response/data models only.
     // No HTTP client, OkHttp, Brotli or NewPipe network stack is included.
-    implementation(libs.ktor.serialization.json)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
     testImplementation(libs.junit)
 
