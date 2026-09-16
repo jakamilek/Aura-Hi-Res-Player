@@ -59,8 +59,6 @@ jobs:
           roots = [Path('app'), Path('innertube'), Path('kugou'), Path('lrclib'), Path('betterlyrics'), Path('simpmusic'), Path('youlyplus'), Path('artistvideo'), Path('applecanvas'), Path('echomusiccanvas'), Path('paxsenixlyrics'), Path('unison')]
           files = [p for root in roots if root.exists() for p in root.rglob('*') if p.is_file() and p.suffix in {'.kt','.kts','.java','.xml','.json','.properties','.txt'}]
 
-          # These providers were removed from the fork. Strip their dead URL literals from
-          # the checkout used for the build so they cannot enter the APK or defeat the audit.
           removed_domains = {
               'api-free.deepl.com': 'removed.invalid',
               'api.deepl.com': 'removed.invalid',
@@ -93,8 +91,18 @@ jobs:
               print('\n'.join(hits))
               raise SystemExit(1)
 
-          # Remove Firebase Analytics/Crashlytics from the CI-produced APK without
-          # touching Google Play Services dependencies required by Cast.
+          # Print the domains still present after removed-provider sanitization. This is an
+          # audit trail for the intentionally retained Qobuz/TIDAL/Spotify/Cast network surface.
+          url_re = re.compile(r'https?://([^/\"\'<>\\s]+)')
+          domains = set()
+          for p in files:
+              try: text = p.read_text(errors='ignore')
+              except Exception: continue
+              domains.update(m.group(1).lower().split(':')[0] for m in url_re.finditer(text))
+          print('RETAINED SOURCE URL DOMAINS:')
+          for domain in sorted(domains):
+              print(f'  {domain}')
+
           p = Path('app/build.gradle.kts')
           s = p.read_text()
           s = s.replace('if (hasGoogleServicesConfig) { apply(plugin = "com.google.gms.google-services"); apply(plugin = "com.google.firebase.crashlytics") }', 'if (hasGoogleServicesConfig) { apply(plugin = "com.google.gms.google-services") }')
