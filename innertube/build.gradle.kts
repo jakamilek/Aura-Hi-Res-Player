@@ -23,8 +23,9 @@ kotlin {
 }
 
 dependencies {
-    // The module now contains only the local YouTube response/data models and parsers.
-    // Its former Ktor/OkHttp/NewPipe network client has been removed from the privacy fork.
+    // Serialization is retained for the local response/data models only.
+    // No HTTP client, OkHttp, Brotli or NewPipe network stack is included.
+    implementation(libs.ktor.serialization.json)
     implementation(libs.timber)
     testImplementation(libs.junit)
 
