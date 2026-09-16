@@ -9,46 +9,43 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Privacy-hardened compatibility layer. Remote lyric translation providers were removed.
- * This object keeps the existing UI/database API but performs no network operation.
- */
+/** Privacy compatibility layer: lyric translation providers are removed and never contacted. */
 object LyricsTranslationHelper {
+    enum class TranslationStatus { Idle, Translating, Success, Error }
+
+    private val _status = MutableStateFlow<TranslationStatus>(TranslationStatus.Idle)
+    val status: StateFlow<TranslationStatus> = _status
+
     private val _hasActiveTranslations = MutableStateFlow(false)
     val hasActiveTranslations: StateFlow<Boolean> = _hasActiveTranslations
 
     private val _manualTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val manualTranslationTrigger: SharedFlow<Unit> = _manualTrigger
+    val manualTrigger: SharedFlow<Unit> = _manualTrigger
 
     private val _clearTranslationsTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val clearTranslationsTrigger: SharedFlow<Unit> = _clearTranslationsTrigger
 
-    fun triggerManualTranslation() {
-        _manualTrigger.tryEmit(Unit)
-    }
-
+    fun triggerManualTranslation() { _manualTrigger.tryEmit(Unit) }
     fun triggerClearTranslations() {
         _hasActiveTranslations.value = false
         _clearTranslationsTrigger.tryEmit(Unit)
     }
 
-    fun hasTranslations(lyricsEntity: LyricsEntity?): Boolean =
-        !lyricsEntity?.translatedLyrics.isNullOrBlank()
+    fun hasTranslations(lyricsEntity: LyricsEntity?): Boolean = !lyricsEntity?.translatedLyrics.isNullOrBlank()
 
-    fun clearTranslations(lyricsEntity: LyricsEntity): LyricsEntity =
-        lyricsEntity.copy(
-            translatedLyrics = "",
-            translationLanguage = "",
-            translationMode = "",
-        )
+    fun clearTranslations(lyricsEntity: LyricsEntity): LyricsEntity = lyricsEntity.copy(
+        translatedLyrics = "",
+        translationLanguage = "",
+        translationMode = "",
+    )
 
-    fun resetStatus() = Unit
+    fun resetStatus() { _status.value = TranslationStatus.Idle }
     fun clearCache() = Unit
     fun setCompositionActive(active: Boolean) = Unit
-    fun cancelTranslation() = Unit
+    fun cancelTranslation() { _status.value = TranslationStatus.Idle }
 
     fun getCachedTranslations(lyrics: List<LyricsEntry>, mode: String, language: String): List<String>? = null
-
     fun applyCachedTranslations(lyrics: List<LyricsEntry>, mode: String, language: String): Boolean = false
 
     fun loadTranslationsFromDatabase(
@@ -66,13 +63,10 @@ object LyricsTranslationHelper {
             return
         }
         val translatedLines = lyricsEntity.translatedLyrics.lines()
-        lyrics.mapIndexedNotNull { index, entry ->
-            if (entry.text.isNotBlank()) index to entry else null
-        }.forEachIndexed { idx, (originalIndex, _) ->
-            if (idx < translatedLines.size) {
-                lyrics[originalIndex].translatedTextFlow.value = translatedLines[idx]
+        lyrics.mapIndexedNotNull { index, entry -> if (entry.text.isNotBlank()) index to entry else null }
+            .forEachIndexed { idx, (originalIndex, _) ->
+                if (idx < translatedLines.size) lyrics[originalIndex].translatedTextFlow.value = translatedLines[idx]
             }
-        }
         _hasActiveTranslations.value = true
     }
 
@@ -93,7 +87,7 @@ object LyricsTranslationHelper {
         database: MusicDatabase? = null,
         keyless: Boolean = false,
     ) {
-        // Intentionally disabled: no remote translation provider is allowed in the privacy fork.
+        _status.value = TranslationStatus.Idle
         lyrics.forEach { it.translatedTextFlow.value = null }
         _hasActiveTranslations.value = false
     }
