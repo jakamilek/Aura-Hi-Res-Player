@@ -74,6 +74,25 @@ jobs:
                   text = text.replace(domain, replacement)
               p.write_text(text)
 
+          # FOSS/privacy build: the package-install capability belongs to the removed
+          # self-updater path and is not needed for Qobuz/TIDAL/Spotify playback or login.
+          # Strip it from the build manifest while leaving the upstream manifest unchanged.
+          manifest = Path('app/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+          hardened = re.sub(
+              r'\s*<!--\s*install permission\s*-->\s*\n\s*<uses-permission\s+android:name="android\.permission\.REQUEST_INSTALL_PACKAGES"\s*/>\s*',
+              '\n',
+              text,
+          )
+          hardened = re.sub(
+              r'\s*<uses-permission\s+android:name="android\.permission\.REQUEST_INSTALL_PACKAGES"\s*/>\s*',
+              '\n',
+              hardened,
+          )
+          if 'android.permission.REQUEST_INSTALL_PACKAGES' in hardened:
+              raise SystemExit('ERROR: REQUEST_INSTALL_PACKAGES survived FOSS manifest sanitization')
+          manifest.write_text(hardened)
+
           forbidden = [
               'api-free.deepl.com', 'api.deepl.com', 'api.mistral.ai', 'openrouter.ai',
               'lyrics-api.boidu.dev', 'lrclib.net', 'api-lyrics.simpmusic.org',
@@ -112,10 +131,22 @@ jobs:
           s = s.replace('buildConfigField("String", "LASTFM_SECRET", "\\\"")', 'buildConfigField("String", "LASTFM_SECRET", "\\\"\\\"")')
           p.write_text(s)
           PY
-          echo 'Privacy source audit: no forbidden provider endpoints found; Firebase telemetry stripped from CI build configuration.'
+          echo 'Privacy source audit: no forbidden provider endpoints found; Firebase telemetry stripped from CI build configuration; package-install permission stripped from FOSS build manifest.'
 
       - name: Build arm64 FOSS debug APK
         run: ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
+
+      - name: Verify hardened APK manifest
+        run: |
+          set -euo pipefail
+          MERGED=$(find app/build/intermediates/merged_manifests -path '*arm64FossDebug*/AndroidManifest.xml' -print -quit)
+          test -n "$MERGED"
+          echo "Merged manifest: $MERGED"
+          if grep -Fq 'android.permission.REQUEST_INSTALL_PACKAGES' "$MERGED"; then
+            echo 'ERROR: hardened APK manifest still declares REQUEST_INSTALL_PACKAGES'
+            exit 1
+          fi
+          echo 'OK: REQUEST_INSTALL_PACKAGES is absent from the arm64FossDebug merged manifest.'
 
       - name: Rename APK
         run: |
