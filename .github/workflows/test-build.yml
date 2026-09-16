@@ -58,6 +58,24 @@ jobs:
 
           roots = [Path('app'), Path('innertube'), Path('kugou'), Path('lrclib'), Path('betterlyrics'), Path('simpmusic'), Path('youlyplus'), Path('artistvideo'), Path('applecanvas'), Path('echomusiccanvas'), Path('paxsenixlyrics'), Path('unison')]
           files = [p for root in roots if root.exists() for p in root.rglob('*') if p.is_file() and p.suffix in {'.kt','.kts','.java','.xml','.json','.properties','.txt'}]
+
+          # These providers were removed from the fork. Strip their dead URL literals from
+          # the checkout used for the build so they cannot enter the APK or defeat the audit.
+          removed_domains = {
+              'api-free.deepl.com': 'removed.invalid',
+              'api.deepl.com': 'removed.invalid',
+              'api.mistral.ai': 'removed.invalid',
+              'openrouter.ai': 'removed.invalid',
+          }
+          for p in files:
+              try:
+                  text = p.read_text(errors='ignore')
+              except Exception:
+                  continue
+              for domain, replacement in removed_domains.items():
+                  text = text.replace(domain, replacement)
+              p.write_text(text)
+
           forbidden = [
               'api-free.deepl.com', 'api.deepl.com', 'api.mistral.ai', 'openrouter.ai',
               'lyrics-api.boidu.dev', 'lrclib.net', 'api-lyrics.simpmusic.org',
