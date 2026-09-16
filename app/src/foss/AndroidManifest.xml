@@ -15,28 +15,27 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" tools:node="remove" />
 
     <!-- Recognition services are not part of the Qobuz-only build. -->
-    <service
-        android:name="iad1tya.echo.music.widget.MusicRecognizerWidgetService"
-        tools:node="remove" />
-    <service
-        android:name="iad1tya.echo.music.recognition.RecognitionForegroundService"
-        tools:node="remove" />
-    <activity
-        android:name="iad1tya.echo.music.recognition.RecognitionLaunchActivity"
-        tools:node="remove" />
-    <service
-        android:name="iad1tya.echo.music.widget.RecognitionTileService"
-        tools:node="remove" />
+    <service android:name="iad1tya.echo.music.widget.MusicRecognizerWidgetService" tools:node="remove" />
+    <service android:name="iad1tya.echo.music.recognition.RecognitionForegroundService" tools:node="remove" />
+    <activity android:name="iad1tya.echo.music.recognition.RecognitionLaunchActivity" tools:node="remove" />
+    <service android:name="iad1tya.echo.music.widget.RecognitionTileService" tools:node="remove" />
 
     <!-- The removed APK updater no longer needs WorkManager's foreground service. -->
-    <service
-        android:name="androidx.work.impl.foreground.SystemForegroundService"
-        tools:node="remove" />
+    <service android:name="androidx.work.impl.foreground.SystemForegroundService" tools:node="remove" />
 
+    <!-- Listen Together is disabled in this privacy fork. Remove its app-link and notification receiver. -->
     <application>
-        <!-- Remove Cast provider in FOSS build since GMS is not available -->
-        <meta-data
-            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
-            tools:node="remove" />
+        <activity android:name="iad1tya.echo.music.MainActivity" tools:node="merge">
+            <intent-filter android:autoVerify="true" tools:node="remove">
+                <data android:host="echomusic-listen-together.onrender.com" />
+            </intent-filter>
+            <intent-filter tools:node="remove">
+                <data android:scheme="echomusic" android:host="listen" />
+            </intent-filter>
+        </activity>
+        <receiver android:name="iad1tya.echo.music.listentogether.ListenTogetherActionReceiver" tools:node="remove" />
+
+        <!-- No GMS Cast provider in the FOSS build. -->
+        <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME" tools:node="remove" />
     </application>
 </manifest>
