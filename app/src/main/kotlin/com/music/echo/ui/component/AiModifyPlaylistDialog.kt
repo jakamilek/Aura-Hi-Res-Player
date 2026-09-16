@@ -10,5 +10,5 @@ fun <T> AiModifyPlaylistDialog(
     onDismiss: () -> Unit,
     onOpenAiSettings: () -> Unit,
 ) {
-    onDismiss()
+    // Intentionally render no UI. This compatibility entry point performs no AI operation.
 }
