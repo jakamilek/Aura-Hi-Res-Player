@@ -74,21 +74,10 @@ jobs:
                   text = text.replace(domain, replacement)
               p.write_text(text)
 
-          # FOSS/privacy build: the package-install capability belongs to the removed
-          # self-updater path and is not needed for Qobuz/TIDAL/Spotify playback or login.
-          # Strip it from the build manifest while leaving the upstream manifest unchanged.
           manifest = Path('app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
-          hardened = re.sub(
-              r'\s*<!--\s*install permission\s*-->\s*\n\s*<uses-permission\s+android:name="android\.permission\.REQUEST_INSTALL_PACKAGES"\s*/>\s*',
-              '\n',
-              text,
-          )
-          hardened = re.sub(
-              r'\s*<uses-permission\s+android:name="android\.permission\.REQUEST_INSTALL_PACKAGES"\s*/>\s*',
-              '\n',
-              hardened,
-          )
+          hardened = re.sub(r'\s*<!--\s*install permission\s*-->\s*\n\s*<uses-permission\s+android:name="android\.permission\.REQUEST_INSTALL_PACKAGES"\s*/>\s*', '\n', text)
+          hardened = re.sub(r'\s*<uses-permission\s+android:name="android\.permission\.REQUEST_INSTALL_PACKAGES"\s*/>\s*', '\n', hardened)
           if 'android.permission.REQUEST_INSTALL_PACKAGES' in hardened:
               raise SystemExit('ERROR: REQUEST_INSTALL_PACKAGES survived FOSS manifest sanitization')
           manifest.write_text(hardened)
@@ -110,8 +99,6 @@ jobs:
               print('\n'.join(hits))
               raise SystemExit(1)
 
-          # Print the domains still present after removed-provider sanitization. This is an
-          # audit trail for the intentionally retained Qobuz/TIDAL/Spotify/Cast network surface.
           url_re = re.compile(r'https?://([^/\"\'<>\\s]+)')
           domains = set()
           for p in files:
@@ -136,29 +123,55 @@ jobs:
       - name: Build arm64 FOSS debug APK
         run: ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
 
-      - name: Verify hardened APK manifest
+      - name: Verify hardened FOSS APK manifest
         run: |
           set -euo pipefail
           MERGED=$(find app/build/intermediates/merged_manifests -path '*arm64FossDebug*/AndroidManifest.xml' -print -quit)
           test -n "$MERGED"
           echo "Merged manifest: $MERGED"
-          if grep -Fq 'android.permission.REQUEST_INSTALL_PACKAGES' "$MERGED"; then
-            echo 'ERROR: hardened APK manifest still declares REQUEST_INSTALL_PACKAGES'
+          for permission in REQUEST_INSTALL_PACKAGES REQUEST_IGNORE_BATTERY_OPTIMIZATIONS RECORD_AUDIO FOREGROUND_SERVICE_MICROPHONE RECEIVE_BOOT_COMPLETED WRITE_SETTINGS; do
+            if grep -Fq "android.permission.$permission" "$MERGED"; then
+              echo "ERROR: hardened FOSS manifest still declares $permission"
+              exit 1
+            fi
+          done
+          echo 'OK: removed updater/recognition permissions are absent from arm64FossDebug.'
+
+      - name: Build arm64 GMS debug APK
+        run: ./gradlew assembleArm64GmsDebug -Pnosub=true --stacktrace --console=plain
+
+      - name: Verify hardened GMS Cast APK manifest
+        run: |
+          set -euo pipefail
+          MERGED=$(find app/build/intermediates/merged_manifests -path '*arm64GmsDebug*/AndroidManifest.xml' -print -quit)
+          test -n "$MERGED"
+          echo "Merged manifest: $MERGED"
+          for permission in REQUEST_INSTALL_PACKAGES REQUEST_IGNORE_BATTERY_OPTIMIZATIONS RECORD_AUDIO FOREGROUND_SERVICE_MICROPHONE RECEIVE_BOOT_COMPLETED WRITE_SETTINGS; do
+            if grep -Fq "android.permission.$permission" "$MERGED"; then
+              echo "ERROR: hardened GMS manifest still declares $permission"
+              exit 1
+            fi
+          done
+          if ! grep -Fq 'com.google.android.gms.cast' "$MERGED"; then
+            echo 'ERROR: GMS Cast integration is missing from merged manifest'
             exit 1
           fi
-          echo 'OK: REQUEST_INSTALL_PACKAGES is absent from the arm64FossDebug merged manifest.'
+          echo 'OK: removed updater/recognition permissions are absent and GMS Cast integration remains present.'
 
-      - name: Rename APK
+      - name: Rename APKs
         run: |
           set -e
           mkdir -p app/build/outputs/apk/test-artifacts
-          APK=$(find app/build/outputs/apk/arm64Foss/debug -name "*.apk" | head -n 1)
-          test -n "$APK"
+          FOSS=$(find app/build/outputs/apk/arm64Foss/debug -name "*.apk" | head -n 1)
+          GMS=$(find app/build/outputs/apk/arm64Gms/debug -name "*.apk" | head -n 1)
+          test -n "$FOSS"
+          test -n "$GMS"
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          cp "$APK" "app/build/outputs/apk/test-artifacts/Aura-Hi-Res-Qobuz-Privacy-${SHORT_SHA}.apk"
-          echo "Test APK: Aura-Hi-Res-Qobuz-Privacy-${SHORT_SHA}.apk"
+          cp "$FOSS" "app/build/outputs/apk/test-artifacts/Aura-Hi-Res-Qobuz-Privacy-FOSS-${SHORT_SHA}.apk"
+          cp "$GMS" "app/build/outputs/apk/test-artifacts/Aura-Hi-Res-Qobuz-Privacy-GMS-${SHORT_SHA}.apk"
+          echo "Test APKs created for ${SHORT_SHA}"
 
-      - name: Upload APK Artifact
+      - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Aura-Hi-Res-Qobuz-Privacy-debug
