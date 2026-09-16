@@ -56,7 +56,8 @@ jobs:
           from pathlib import Path
           import re
 
-          roots = [Path('app'), Path('innertube'), Path('kugou'), Path('lrclib'), Path('betterlyrics'), Path('simpmusic'), Path('youlyplus'), Path('artistvideo'), Path('applecanvas'), Path('echomusiccanvas'), Path('paxsenixlyrics'), Path('unison')]
+          # Audit only source modules that remain part of the privacy-fork build.
+          roots = [Path('app'), Path('kugou'), Path('canvas'), Path('migration'), Path('applecanvas'), Path('echomusiccanvas'), Path('paxsenixlyrics'), Path('unison')]
           files = [p for root in roots if root.exists() for p in root.rglob('*') if p.is_file() and p.suffix in {'.kt','.kts','.java','.xml','.json','.properties','.txt'}]
 
           removed_domains = {
