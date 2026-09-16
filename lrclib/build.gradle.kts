@@ -25,4 +25,5 @@ kotlin {
 dependencies {
     testImplementation(libs.junit)
     coreLibraryDesugaring(libs.desugaring)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
 }
