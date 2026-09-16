@@ -11,7 +11,12 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** Privacy compatibility layer: lyric translation providers are removed and never contacted. */
 object LyricsTranslationHelper {
-    enum class TranslationStatus { Idle, Translating, Success, Error }
+    sealed class TranslationStatus {
+        data object Idle : TranslationStatus()
+        data object Translating : TranslationStatus()
+        data object Success : TranslationStatus()
+        data class Error(val message: String) : TranslationStatus()
+    }
 
     private val _status = MutableStateFlow<TranslationStatus>(TranslationStatus.Idle)
     val status: StateFlow<TranslationStatus> = _status
