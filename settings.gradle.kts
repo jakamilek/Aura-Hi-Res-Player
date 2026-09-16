@@ -22,8 +22,7 @@ include(":canvas")
 include(":kugou")
 include(":applecanvas")
 include(":echomusiccanvas")
-include(":paxsenixlyrics")
 include(":unison")
 
-// YouTube/InnerTube and the removed third-party lyrics modules are intentionally
+// YouTube/InnerTube and third-party lyrics/proxy modules are intentionally
 // not included in the privacy fork.
