@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- GMS variant keeps only permissions needed by playback, local audio and Cast.
+         The removed permissions belong to the deleted updater/recognition paths. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:node="remove" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+
+    <service
+        android:name=".widget.MusicRecognizerWidgetService"
+        tools:node="remove" />
+    <activity
+        android:name=".recognition.RecognitionLaunchActivity"
+        tools:node="remove" />
+    <service
+        android:name=".recognition.RecognitionForegroundService"
+        tools:node="remove" />
+    <service
+        android:name=".widget.RecognitionTileService"
+        tools:node="remove" />
+    <service
+        android:name="androidx.work.impl.foreground.SystemForegroundService"
+        tools:node="remove" />
+</manifest>
