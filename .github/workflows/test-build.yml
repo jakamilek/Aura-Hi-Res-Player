@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -178,8 +179,8 @@ jobs:
         with:
           name: aura-privacy-ci-logs-${{ github.run_id }}
           path: ci-logs/
-          if-no-files-found: warn
-          retention-days: 14
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Publish diagnostic tails to job summary
         if: ${{ always() }}
@@ -202,11 +203,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set +e
+          set -euo pipefail
           rm -rf ci-latest
           mkdir -p ci-latest
+          found=0
           for f in ci-logs/*.log; do
             [ -f "$f" ] || continue
+            found=1
             out="ci-latest/$(basename "$f")"
             python3 - "$f" "$out" <<'PY'
           import re, sys
@@ -221,20 +224,27 @@ jobs:
           ]
           for pattern, replacement in patterns:
               text = re.sub(pattern, replacement, text)
-          dst.write_text(text[-200000:])
+          dst.write_text(text)
           PY
           done
+          if [ "$found" -eq 0 ]; then
+            echo 'ERROR: no CI log files were produced.' >&2
+            exit 1
+          fi
           {
             echo "Run: $GITHUB_RUN_ID"
             echo "Commit: $GITHUB_SHA"
             echo "Status: ${{ job.status }}"
             echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo
-            echo 'These logs are sanitized diagnostic tails for debugging CI. Full logs remain in the GitHub Actions artifact.'
+            echo 'Sanitized diagnostic logs are also committed here for reliable retrieval. Full logs remain in the GitHub Actions artifact.'
           } > ci-latest/README.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add ci-latest
-          git diff --cached --quiet && exit 0
+          if git diff --cached --quiet; then
+            echo 'No diagnostic changes to commit.'
+            exit 0
+          fi
           git commit -m 'ci: persist latest diagnostics [skip ci]'
           git push origin HEAD:qobuz-privacy
