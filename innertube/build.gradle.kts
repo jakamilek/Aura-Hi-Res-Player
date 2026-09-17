@@ -19,25 +19,28 @@ android {
 
     sourceSets {
         getByName("main") {
-            java.setSrcDirs(listOf("src/main/kotlin/com/music/innertube/models"))
+            // Keep only local response/data types required by the existing app database/UI
+            // compatibility layer. Do NOT compile the legacy network/client utilities.
+            java.setSrcDirs(
+                listOf(
+                    "src/main/kotlin/com/music/innertube/models",
+                    "src/main/kotlin/com/music/innertube/pages",
+                )
+            )
         }
     }
 }
 
-// Privacy-fork hardening: compile only the Room-compatible data models.
-// The legacy YouTube/InnerTube client, parsers and network utilities remain
-// in the repository for source-history compatibility but are not packaged.
+// Privacy-fork hardening: InnerTube is data-model/page-model compatibility only.
+// The legacy YouTube/InnerTube client and network utilities are deliberately excluded.
 
 kotlin {
     jvmToolchain(21)
 }
 
 dependencies {
-    // Serialization is retained for the local response/data models only.
-    // No HTTP client, OkHttp, Brotli or NewPipe network stack is included.
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
     testImplementation(libs.junit)
-
     coreLibraryDesugaring(libs.desugaring)
 }
