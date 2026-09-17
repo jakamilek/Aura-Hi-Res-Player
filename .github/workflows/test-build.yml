@@ -52,6 +52,7 @@ jobs:
       - name: Privacy source audit and build sanitization
         run: |
           set -euo pipefail
+          mkdir -p ci-logs
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -119,36 +120,46 @@ jobs:
           s = s.replace('buildConfigField("String", "LASTFM_SECRET", "\\\"")', 'buildConfigField("String", "LASTFM_SECRET", "\\\"\\\"")')
           p.write_text(s)
           PY
-          echo 'Privacy source audit completed.'
+          echo 'Privacy source audit completed.' 2>&1 | tee ci-logs/privacy-audit.log
 
       - name: Dependency and source diagnostics
         if: ${{ always() }}
         run: |
           set +e
-          echo '=== Included Gradle modules ==='
-          ./gradlew projects --console=plain
-          echo '=== App runtime dependencies ==='
-          ./gradlew :app:dependencies --configuration arm64FossDebugRuntimeClasspath --console=plain
-          echo '=== InnerTube source inventory ==='
-          find innertube/src/main -type f 2>/dev/null | sort || true
-          echo '=== InnerTube network/runtime references ==='
-          grep -RInE 'https?://|OkHttp|HttpClient|ktor|WebView|Cookie|Authorization|Bearer|YouTubeClient|InnerTube' innertube/src/main 2>/dev/null || true
-          true
+          mkdir -p ci-logs
+          {
+            echo '=== Included Gradle modules ==='
+            ./gradlew projects --console=plain
+            echo '=== App runtime dependencies ==='
+            ./gradlew :app:dependencies --configuration arm64FossDebugRuntimeClasspath --console=plain
+            echo '=== InnerTube source inventory ==='
+            find innertube/src/main -type f 2>/dev/null | sort || true
+            echo '=== InnerTube network/runtime references ==='
+            grep -RInE 'https?://|OkHttp|HttpClient|ktor|WebView|Cookie|Authorization|Bearer|YouTubeClient|InnerTube' innertube/src/main 2>/dev/null || true
+          } 2>&1 | tee ci-logs/dependency-diagnostics.log
+          exit 0
 
       - name: Build FOSS ARM64
-        run: ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
+        run: |
+          set -o pipefail
+          mkdir -p ci-logs
+          ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain 2>&1 | tee ci-logs/build-foss.log
 
       - name: Build GMS ARM64
-        run: ./gradlew assembleArm64GmsDebug -Pnosub=true --stacktrace --console=plain
+        run: |
+          set -o pipefail
+          mkdir -p ci-logs
+          ./gradlew assembleArm64GmsDebug -Pnosub=true --stacktrace --console=plain 2>&1 | tee ci-logs/build-gms.log
 
       - name: Verify manifest hardening
         run: |
           set -euo pipefail
+          mkdir -p ci-logs
           for apk in app/build/outputs/apk/debug/*arm64*foss*.apk app/build/outputs/apk/debug/*arm64*gms*.apk; do
             [ -f "$apk" ] || continue
             if unzip -p "$apk" AndroidManifest.xml >/dev/null 2>&1; then :; fi
           done
-          echo 'Manifest hardening build step completed.'
+          echo 'Manifest hardening build step completed.' | tee ci-logs/manifest-verification.log
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
@@ -156,3 +167,12 @@ jobs:
           name: aura-privacy-arm64-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Upload CI diagnostics and full logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: aura-privacy-ci-logs-${{ github.run_id }}
+          path: ci-logs/
+          if-no-files-found: warn
+          retention-days: 14
