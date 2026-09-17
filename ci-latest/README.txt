@@ -1,6 +1,6 @@
-Run: 35241358961
-Commit: c985055ba644b056cc6b1f50921f5cfb38c04901
+Run: 35242688493
+Commit: fc82f72f67893a9b8859043986939bc3e81fbc85
 Status: failure
-Generated: 2026-09-17T15:42:40Z
+Generated: 2026-09-17T15:55:32Z
 
-These logs are sanitized diagnostic tails for debugging CI. Full logs remain in the GitHub Actions artifact.
+Sanitized diagnostic logs are also committed here for reliable retrieval. Full logs remain in the GitHub Actions artifact.
