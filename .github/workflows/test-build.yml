@@ -56,7 +56,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # Audit every source module that remains part of the privacy-fork build.
           roots = [Path('app'), Path('kugou'), Path('canvas'), Path('migration'), Path('applecanvas'), Path('echomusiccanvas'), Path('unison'), Path('innertube')]
           files = [p for root in roots if root.exists() for p in root.rglob('*') if p.is_file() and p.suffix in {'.kt','.kts','.java','.xml','.json','.properties','.txt'}]
 
@@ -120,7 +119,20 @@ jobs:
           s = s.replace('buildConfigField("String", "LASTFM_SECRET", "\\\"")', 'buildConfigField("String", "LASTFM_SECRET", "\\\"\\\"")')
           p.write_text(s)
           PY
-          echo 'Privacy source audit: no forbidden provider endpoints found; Firebase telemetry stripped from CI build configuration; package-install permission stripped from FOSS build manifest; InnerTube audit now includes the model-only compatibility module.'
+          echo 'Privacy source audit completed.'
+
+      - name: Dependency and source diagnostics
+        if: ${{ always() }}
+        run: |
+          set +e
+          echo '=== Included Gradle modules ==='
+          ./gradlew projects --console=plain
+          echo '=== App runtime dependencies ==='
+          ./gradlew :app:dependencies --configuration arm64FossDebugRuntimeClasspath --console=plain
+          echo '=== InnerTube source inventory ==='
+          find innertube/src/main -type f 2>/dev/null | sort || true
+          echo '=== InnerTube network/runtime references ==='
+          grep -RInE 'https?://|OkHttp|HttpClient|ktor|WebView|Cookie|Authorization|Bearer|YouTubeClient|InnerTube' innertube/src/main 2>/dev/null || true
 
       - name: Build FOSS ARM64
         run: ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
