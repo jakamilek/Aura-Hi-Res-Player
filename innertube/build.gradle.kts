@@ -18,6 +18,13 @@ android {
     }
 }
 
+// Privacy-fork hardening: compile only the Room-compatible data models.
+// The legacy YouTube/InnerTube client, parsers and network utilities remain
+// in the repository for source-history compatibility but are not packaged.
+sourceSets["main"].java.setSrcDirs(
+    listOf("src/main/kotlin/com/music/innertube/models")
+)
+
 kotlin {
     jvmToolchain(21)
 }
