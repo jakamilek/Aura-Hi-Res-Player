@@ -176,3 +176,19 @@ jobs:
           path: ci-logs/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Publish diagnostic tails to job summary
+        if: ${{ always() }}
+        run: |
+          set +e
+          {
+            echo '## Aura Privacy CI diagnostics'
+            for f in ci-logs/*.log; do
+              [ -f "$f" ] || continue
+              echo
+              echo "### $f (last 120 lines)"
+              echo '```text'
+              tail -n 120 "$f"
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
