@@ -133,6 +133,7 @@ jobs:
           find innertube/src/main -type f 2>/dev/null | sort || true
           echo '=== InnerTube network/runtime references ==='
           grep -RInE 'https?://|OkHttp|HttpClient|ktor|WebView|Cookie|Authorization|Bearer|YouTubeClient|InnerTube' innertube/src/main 2>/dev/null || true
+          true
 
       - name: Build FOSS ARM64
         run: ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain
