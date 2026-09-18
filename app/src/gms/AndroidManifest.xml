@@ -2,8 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Privacy fork: remove capabilities unrelated to Qobuz playback. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+    <!-- GMS variant keeps only permissions needed by playback, local audio and Cast. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" tools:node="remove" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" tools:node="remove" />
@@ -13,14 +12,12 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:node="remove" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
 
-    <!-- Recognition services are not part of the Qobuz-only build. -->
-    <service android:name="iad1tya.echo.music.widget.MusicRecognizerWidgetService" tools:node="remove" />
-    <service android:name="iad1tya.echo.music.recognition.RecognitionForegroundService" tools:node="remove" />
-    <activity android:name="iad1tya.echo.music.recognition.RecognitionLaunchActivity" tools:node="remove" />
-    <service android:name="iad1tya.echo.music.widget.RecognitionTileService" tools:node="remove" />
-
-    <!-- The removed APK updater no longer needs WorkManager's foreground service. -->
+    <service android:name=".widget.MusicRecognizerWidgetService" tools:node="remove" />
+    <activity android:name=".recognition.RecognitionLaunchActivity" tools:node="remove" />
+    <service android:name=".recognition.RecognitionForegroundService" tools:node="remove" />
+    <service android:name=".widget.RecognitionTileService" tools:node="remove" />
     <service android:name="androidx.work.impl.foreground.SystemForegroundService" tools:node="remove" />
 
     <!-- Listen Together is disabled in this privacy fork. Remove its app-link and notification receiver. -->
@@ -34,8 +31,5 @@
             </intent-filter>
         </activity>
         <receiver android:name="iad1tya.echo.music.listentogether.ListenTogetherActionReceiver" tools:node="remove" />
-
-        <!-- No GMS Cast provider in the FOSS build. -->
-        <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME" tools:node="remove" />
     </application>
 </manifest>

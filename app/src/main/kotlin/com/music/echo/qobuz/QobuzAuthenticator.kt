@@ -83,7 +83,7 @@ class QobuzAuthenticator(
         val hires = response != null &&
             response.isLosslessDelivery &&
             (response.bitDepth ?: 0) >= 24 &&
-            probe.hires
+            probe.maximumBitDepth >= 24
         val session = QobuzSession(
             token = token,
             appId = appId,
@@ -117,7 +117,7 @@ class QobuzAuthenticator(
             val tracks = api.searchTracks(appId, token, query, limit = 25)
             if (tracks.isEmpty()) continue
             // Prefer a genuinely hi-res, streamable track so bit-depth read-back is meaningful.
-            tracks.firstOrNull { it.streamable && it.hires && it.maximumBitDepth >= 24 }?.let { return it }
+            tracks.firstOrNull { it.streamable && it.maximumBitDepth >= 24 && it.maximumSamplingRate > 0.0 }?.let { return it }
             tracks.firstOrNull { it.streamable }?.let { return it }
         }
         Timber.tag(TAG).w("No Qobuz probe track found for secret discovery")

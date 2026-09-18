@@ -1,13 +1,12 @@
-package iad1tya.echo.music.ui.screens.playlist
+package iad1tya.echo.music.ui.component
 
 import androidx.compose.runtime.Composable
-import iad1tya.echo.music.db.entities.PlaylistSong
 
 /** AI playlist modification was removed from the privacy fork. */
 @Composable
-fun AiModifyPlaylistDialog(
+fun <T> AiModifyPlaylistDialog(
     playlistId: String,
-    songs: List<PlaylistSong>,
+    songs: List<T>,
     onDismiss: () -> Unit,
     onOpenAiSettings: () -> Unit,
 ) {

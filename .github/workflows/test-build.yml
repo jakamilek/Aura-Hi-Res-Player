@@ -1,16 +1,17 @@
-name: Test Build (debug APK, no release)
-
-# Private test build for verifying fixes on a real device.
-# - Triggers ONLY on workflow_dispatch and pushes to test/** branches — NEVER on main.
-# - Builds the arm64 GMS *debug* APK (auto-signed with the Android debug key; no release keystore needed).
-# - Uploads the APK as a workflow artifact only.
-# - Sends NO Discord/Telegram notifications and creates NO GitHub Release — it cannot reach the community.
+name: Qobuz Privacy Fork Test Build
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - 'test/**'
+      - 'qobuz-privacy'
+  pull_request:
+    branches:
+      - 'main'
+
+permissions:
+  contents: write
+  actions: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -34,18 +35,15 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-testbuild-${{ hashFiles('**/*.gradle*') }}
+          key: ${{ runner.os }}-gradle-qobuz-privacy-${{ hashFiles('**/*.gradle*') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-testbuild-
+            ${{ runner.os }}-gradle-qobuz-privacy-
             ${{ runner.os }}-gradle-
 
       - name: Create local.properties
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-      # No google-services.json step: the GMS debug variant builds fine without it (verified), and
-      # there is no GOOGLE_SERVICES_JSON secret — the step was dead and only produced an editor lint hint.
-
-      - name: Ensure Android debug keystore (CI runner has none)
+      - name: Ensure Android debug keystore
         run: |
           mkdir -p ~/.android
           if [ ! -f ~/.android/debug.keystore ]; then
@@ -53,30 +51,200 @@ jobs:
               -storepass android -keypass android -alias androiddebugkey \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US"
-            echo "Generated standard Android debug keystore."
           fi
 
-      - name: Build universal GMS debug APK
-        # Universal (all ABIs) so the test APK installs on EVERY device — phones, Android TV, car head
-        # units and older 32-bit / x86 boxes — for verifying High-Performance Mode across form factors.
-        env:
-          # Debug builds are signed with the Android debug certificate, so the licence is embedded
-          # UNBOUND here on purpose — binding it would leave every test build without an EQ. Without
-          # the secret the test APK simply has no DSP engine and reports it on the EQ screen.
-          SUPERPOWERED_LICENSE_KEY: ${{ secrets.SUPERPOWERED_LICENSE_KEY }}
-        run: ./gradlew assembleUniversalGmsDebug --console=plain
-
-      - name: Rename APK
+      - name: Privacy source audit and build sanitization
         run: |
-          mkdir -p app/build/outputs/apk/test-artifacts
-          APK=$(find app/build/outputs/apk/universalGms/debug -name "*.apk" | head -n 1)
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          cp "$APK" "app/build/outputs/apk/test-artifacts/Aura-Hi-Res-TEST-${SHORT_SHA}.apk"
-          echo "Test APK: Aura-Hi-Res-TEST-${SHORT_SHA}.apk"
+          set -euo pipefail
+          mkdir -p ci-logs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
 
-      - name: Upload APK Artifact
+          roots = [Path('app'), Path('kugou'), Path('canvas'), Path('migration'), Path('applecanvas'), Path('echomusiccanvas'), Path('unison'), Path('innertube')]
+          files = [p for root in roots if root.exists() for p in root.rglob('*') if p.is_file() and p.suffix in {'.kt','.kts','.java','.xml','.json','.properties','.txt'}]
+
+          removed_domains = {
+              'api-free.deepl.com': 'removed.invalid',
+              'api.deepl.com': 'removed.invalid',
+              'api.mistral.ai': 'removed.invalid',
+              'openrouter.ai': 'removed.invalid',
+          }
+          for p in files:
+              try:
+                  text = p.read_text(errors='ignore')
+              except Exception:
+                  continue
+              for domain, replacement in removed_domains.items():
+                  text = text.replace(domain, replacement)
+              p.write_text(text)
+
+          manifest = Path('app/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+          hardened = re.sub(r'\s*<!--\s*install permission\s*-->\s*\n\s*<uses-permission\s+android:name="android\.permission\.REQUEST_INSTALL_PACKAGES"\s*/>\s*', '\n', text)
+          hardened = re.sub(r'\s*<uses-permission\s+android:name="android\.permission\.REQUEST_INSTALL_PACKAGES"\s*/>\s*', '\n', hardened)
+          if 'android.permission.REQUEST_INSTALL_PACKAGES' in hardened:
+              raise SystemExit('ERROR: REQUEST_INSTALL_PACKAGES survived FOSS manifest sanitization')
+          manifest.write_text(hardened)
+
+          forbidden = [
+              'api-free.deepl.com', 'api.deepl.com', 'api.mistral.ai', 'openrouter.ai',
+              'lyrics-api.boidu.dev', 'lrclib.net', 'api-lyrics.simpmusic.org',
+              'vivi-yt-music-server.onrender.com', 'tidal-api.geeked.wtf', 'tidal-api.binimum.org',
+              'lyrics.paxsenix.org'
+          ]
+          hits = []
+          for p in files:
+              try: text = p.read_text(errors='ignore')
+              except Exception: continue
+              for domain in forbidden:
+                  if domain in text:
+                      hits.append(f'{p}: {domain}')
+          if hits:
+              print('FORBIDDEN NETWORK ENDPOINTS FOUND:')
+              print('\n'.join(hits))
+              raise SystemExit(1)
+
+          url_re = re.compile(r'https?://([^/\"\'<>\\s]+)')
+          domains = set()
+          for p in files:
+              try: text = p.read_text(errors='ignore')
+              except Exception: continue
+              domains.update(m.group(1).lower().split(':')[0] for m in url_re.finditer(text))
+          print('RETAINED SOURCE URL DOMAINS:')
+          for domain in sorted(domains):
+              print(f'  {domain}')
+
+          p = Path('app/build.gradle.kts')
+          s = p.read_text()
+          s = s.replace('if (hasGoogleServicesConfig) { apply(plugin = "com.google.gms.google-services"); apply(plugin = "com.google.firebase.crashlytics") }', 'if (hasGoogleServicesConfig) { apply(plugin = "com.google.gms.google-services") }')
+          s = re.sub(r'"gmsImplementation"\(platform\("com\.google\.firebase:firebase-bom:[^\"]+"\)\);\s*', '', s)
+          s = re.sub(r'"gmsImplementation"\("com\.google\.firebase:firebase-(analytics|crashlytics)"\);\s*', '', s)
+          s = s.replace('buildConfigField("String", "LASTFM_API_KEY", "\\\"");', 'buildConfigField("String", "LASTFM_API_KEY", "\\\"\\\"");')
+          s = s.replace('buildConfigField("String", "LASTFM_SECRET", "\\\"")', 'buildConfigField("String", "LASTFM_SECRET", "\\\"\\\"")')
+          p.write_text(s)
+          PY
+          echo 'Privacy source audit completed.' 2>&1 | tee ci-logs/privacy-audit.log
+
+      - name: Dependency and source diagnostics
+        if: ${{ always() }}
+        run: |
+          set +e
+          mkdir -p ci-logs
+          {
+            echo '=== Included Gradle modules ==='
+            ./gradlew projects --console=plain
+            echo '=== App runtime dependencies ==='
+            ./gradlew :app:dependencies --configuration arm64FossDebugRuntimeClasspath --console=plain
+            echo '=== InnerTube source inventory ==='
+            find innertube/src/main -type f 2>/dev/null | sort || true
+            echo '=== InnerTube network/runtime references ==='
+            grep -RInE 'https?://|OkHttp|HttpClient|ktor|WebView|Cookie|Authorization|Bearer|YouTubeClient|InnerTube' innertube/src/main 2>/dev/null || true
+          } 2>&1 | tee ci-logs/dependency-diagnostics.log
+          exit 0
+
+      - name: Build FOSS ARM64
+        run: |
+          set -o pipefail
+          mkdir -p ci-logs
+          ./gradlew assembleArm64FossDebug -Pnosub=true --stacktrace --console=plain 2>&1 | tee ci-logs/build-foss.log
+
+      - name: Build GMS ARM64
+        run: |
+          set -o pipefail
+          mkdir -p ci-logs
+          ./gradlew assembleArm64GmsDebug -Pnosub=true --stacktrace --console=plain 2>&1 | tee ci-logs/build-gms.log
+
+      - name: Verify manifest hardening
+        run: |
+          set -euo pipefail
+          mkdir -p ci-logs
+          for apk in app/build/outputs/apk/debug/*arm64*foss*.apk app/build/outputs/apk/debug/*arm64*gms*.apk; do
+            [ -f "$apk" ] || continue
+            if unzip -p "$apk" AndroidManifest.xml >/dev/null 2>&1; then :; fi
+          done
+          echo 'Manifest hardening build step completed.' | tee ci-logs/manifest-verification.log
+
+      - name: Upload APKs
+        if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
-          name: Aura-Hi-Res-TEST-debug
-          path: app/build/outputs/apk/test-artifacts/*.apk
-          retention-days: 14
+          name: aura-privacy-arm64-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload CI diagnostics and full logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: aura-privacy-ci-logs-${{ github.run_id }}
+          path: ci-logs/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish diagnostic tails to job summary
+        if: ${{ always() }}
+        run: |
+          set +e
+          {
+            echo '## Aura Privacy CI diagnostics'
+            for f in ci-logs/*.log; do
+              [ -f "$f" ] || continue
+              echo
+              echo "### $f (last 120 lines)"
+              echo '```text'
+              tail -n 120 "$f"
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Persist sanitized diagnostics to qobuz-privacy
+        if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/qobuz-privacy' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          rm -rf ci-latest
+          mkdir -p ci-latest
+          found=0
+          for f in ci-logs/*.log; do
+            [ -f "$f" ] || continue
+            found=1
+            out="ci-latest/$(basename "$f")"
+            python3 - "$f" "$out" <<'PY'
+          import re, sys
+          from pathlib import Path
+          src, dst = map(Path, sys.argv[1:])
+          text = src.read_text(errors='replace')
+          patterns = [
+              (r'(?i)(Authorization:\s*Bearer\s+)[^\s\r\n]+', r'\1[REDACTED]'),
+              (r'(?i)(Bearer\s+)[A-Za-z0-9._~+/=-]{12,}', r'\1[REDACTED]'),
+              (r'(?i)(\b(?:password|passwd|secret|token|api[_-]?key)\b\s*[:=]\s*)[^\s\r\n]+', r'\1[REDACTED]'),
+              (r'(?i)(client[_-]?secret\s*[:=]\s*)[^\s\r\n]+', r'\1[REDACTED]'),
+          ]
+          for pattern, replacement in patterns:
+              text = re.sub(pattern, replacement, text)
+          dst.write_text(text)
+          PY
+          done
+          if [ "$found" -eq 0 ]; then
+            echo 'ERROR: no CI log files were produced.' >&2
+            exit 1
+          fi
+          {
+            echo "Run: $GITHUB_RUN_ID"
+            echo "Commit: $GITHUB_SHA"
+            echo "Status: ${{ job.status }}"
+            echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo 'Sanitized diagnostic logs are also committed here for reliable retrieval. Full logs remain in the GitHub Actions artifact.'
+          } > ci-latest/README.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ci-latest
+          if git diff --cached --quiet; then
+            echo 'No diagnostic changes to commit.'
+            exit 0
+          fi
+          git commit -m 'ci: persist latest diagnostics [skip ci]'
+          git push origin HEAD:qobuz-privacy

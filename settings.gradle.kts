@@ -7,7 +7,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { setUrl("https://jitpack.io") }
-        maven { setUrl("https://maven.aliyun.com/repository/public") }
     }
 }
 
@@ -20,33 +19,14 @@ rootProject.name = "echomusic"
 include(":app")
 include(":migration")
 include(":canvas")
-include(":innertube")
 include(":kugou")
-include(":lrclib")
-include(":betterlyrics")
-include(":simpmusic")
-include(":youlyplus")
-include(":shazamkit")
-include(":artistvideo")
+include(":innertube")
 include(":applecanvas")
 include(":echomusiccanvas")
-include(":paxsenixlyrics")
 include(":unison")
 
-
-// Use a local copy of NewPipe Extractor by uncommenting the lines below.
-// We assume, that echomusic and NewPipe Extractor have the same parent directory.
-// If this is not the case, please change the path in includeBuild().
-//
-// For this to work you also need to change the implementation in innertube/build.gradle.kts
-// to one which does not specify a version.
-// From:
-//      implementation(libs.newpipe.extractor)
-// To:
-//      implementation("com.github.teamnewpipe:NewPipeExtractor")
-//includeBuild("../NewPipeExtractor") {
-//    dependencySubstitution {
-//        substitute(module("com.github.teamnewpipe:NewPipeExtractor")).using(project(":extractor"))
-//    }
-//}
-include(":jiosaavn")
+// The InnerTube module remains because the existing app database, models and
+// compatibility layer still depend on its data types. YouTube-only runtime
+// clients/endpoints are removed separately; this module must not be removed
+// wholesale until all model consumers have been migrated.
+// Third-party lyrics/proxy modules remain excluded from the privacy build.
