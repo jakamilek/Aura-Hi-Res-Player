@@ -1,0 +1,13 @@
+name: CI Diagnostics
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create diagnostic marker
+        run: |
+          echo "CI diagnostics workflow is active"
+          echo "Commit: $GITHUB_SHA"
